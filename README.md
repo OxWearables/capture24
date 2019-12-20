@@ -1,6 +1,8 @@
 # Capture24 dataset
 
+<p align="center">
 <img src="img/wrist_accelerometer.jpg" width="300"/>
+</p>
 
 The Capture24 dataset consists of wrist-worn accelerometer measurements
 collected from around 150 participants that wore the device for 24 hours.
