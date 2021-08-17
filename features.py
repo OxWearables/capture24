@@ -90,10 +90,8 @@ def peak_features(v, sample_rate):
     feats['numPeaks'] = len(peaks)
     if len(peak_props['prominences']) > 0:
         feats['peakPromin'] = np.median(peak_props['prominences'])
-        feats['peakProminIQR'] = stats.iqr(peak_props['prominences'])
     else:
         feats['peakPromin'] = 0
-        feats['peakProminIQR'] = 0
 
     return feats
 
