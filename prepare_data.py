@@ -11,17 +11,31 @@ from joblib import Parallel, delayed
 import features
 
 DATAFILES = 'P[0-9][0-9][0-9].csv.gz'
+ANNOFILE = 'annotation-label-dictionary.csv'
 SAMPLE_RATE = 100
 
 
 def main(args):
 
+    # Extract features
     featframes = Parallel(n_jobs=args.n_jobs)(
         delayed(make_featframe)(datafile, winsec=args.winsec)
-        for datafile in tqdm(glob(os.path.join(args.datadir, DATAFILES))))
+        for datafile in tqdm(glob(os.path.join(args.datadir, DATAFILES)))
+    )
 
     featframes = pd.concat(featframes)
 
+    # Now add the labels
+    anno_label_dict = pd.read_csv(os.path.join(args.datadir, ANNOFILE),
+                                  index_col='annotation', dtype='string')
+
+    featframes = pd.concat(
+        [featframes.reset_index(drop=True),
+         anno_label_dict.reindex(featframes['annotation']).reset_index(drop=True)],
+        axis=1
+    )
+
+    # Save
     featframes.to_pickle(args.outfile)
 
 
