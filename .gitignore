@@ -1,0 +1,6 @@
+.vscode
+__pycache__
+data/*
+!data/README.md
+*.ipynb
+!tutorial.ipynb
