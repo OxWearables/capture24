@@ -63,7 +63,7 @@ def viterbi(Y_obs, hmm_params):
     return viterbi_path
 
 
-def bootstrap(f, sample, nboots=100, n_jobs=4):
+def bootstrapCI(f, sample, nboots=100, n_jobs=4):
     """ Bootstrap confidence intervals
     https://ocw.mit.edu/courses/mathematics/18-05-introduction-to-probability-and-statistics-spring-2014/readings/MIT18_05S14_Reading24.pdf
     """
@@ -85,6 +85,9 @@ def metrics_report(Y_true, Y_pred, nboots=100, n_jobs=4):
     # Print the cute sklearn report
     print(metrics.classification_report(Y_true, Y_pred, zero_division=0))
 
+    # Compute f1, phi and kappa scores
+    # Use bootstrap for confidence intervals
+
     def f(idxs):
         _Y_true, _Y_pred = Y_true[idxs], Y_pred[idxs]
 
@@ -96,7 +99,7 @@ def metrics_report(Y_true, Y_pred, nboots=100, n_jobs=4):
 
     idxs = np.arange(len(Y_true))
     (f1, phi, kappa) = f(idxs)
-    (f1_low, phi_low, kappa_low), (f1_hi, phi_hi, kappa_hi) = bootstrap(f, idxs, nboots, n_jobs)
+    (f1_low, phi_low, kappa_low), (f1_hi, phi_hi, kappa_hi) = bootstrapCI(f, idxs, nboots, n_jobs)
 
     print(f"   f1: {f1:.3f} ({f1_low:.3f}, {f1_hi:.3f})")
     print(f"  phi: {phi:.3f} ({phi_low:.3f}, {phi_hi:.3f})")

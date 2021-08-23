@@ -4,7 +4,6 @@ import argparse
 import numpy as np
 import pandas as pd
 from imblearn.ensemble import BalancedRandomForestClassifier
-from sklearn import metrics
 
 import utils
 

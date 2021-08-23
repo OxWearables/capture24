@@ -19,7 +19,7 @@ def main(args):
 
     os.system(f'mkdir -p {args.outdir}')
 
-    # Extract features
+    # Extract windows
     windows = Parallel(n_jobs=args.n_jobs)(
         delayed(make_windows)(datafile, winsec=args.winsec)
         for datafile in tqdm(glob(os.path.join(args.datadir, DATAFILES)))
