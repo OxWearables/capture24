@@ -1,0 +1,4 @@
+.vscode
+__pycache__
+prepared_data/*
+prepared_data.tar.gz
