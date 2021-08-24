@@ -1,0 +1,11 @@
+defaults:
+  - default
+
+name: zero_workers
+
+train:
+  num_workers: 0
+valid:
+  num_workers: 0
+test:
+  num_workers: 0

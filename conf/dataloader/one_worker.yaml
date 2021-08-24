@@ -1,0 +1,11 @@
+defaults:
+  - default
+
+name: one_worker
+
+train:
+  num_workers: 1
+valid:
+  num_workers: 1
+test:
+  num_workers: 1

@@ -1,0 +1,19 @@
+name: default
+
+method: 'adam'
+
+adam:
+  lr: 3e-4
+  amsgrad: true
+
+sgd:
+  lr: .3
+
+cosine_annealing:
+  T_0: 1
+  T_mult: 1
+  eta_min: 0
+
+swa:
+  start: 5
+  lr: .05

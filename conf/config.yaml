@@ -1,0 +1,7 @@
+defaults:
+  - experiment: default
+
+seed: 42
+ckpt_path: null
+fit: true
+test: true

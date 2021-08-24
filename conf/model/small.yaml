@@ -1,0 +1,7 @@
+defaults:
+  - default
+
+name: small
+
+n_filters: [32, 32, 64, 64, 128, 128]
+fc_size: 256

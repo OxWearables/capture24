@@ -1,0 +1,15 @@
+# @package _global_
+defaults:
+  - /data: default
+  - /model: small
+  - /optim: default
+  - /augment: default
+  - /dataloader: default
+
+name: debug
+n_epochs: 3
+early_stop_patience: 2
+
+limit_train_batches: 0.1
+limit_val_batches: 0.1
+limit_test_batches: 0.1

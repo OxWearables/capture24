@@ -1,0 +1,19 @@
+name: default
+
+shift:
+  window: 500
+  prob: 1.0
+
+jitter:
+  sigma: 0.05
+  prob: 1.0
+
+twarp:
+  sigma: 0.1
+  knots: 4
+  prob: 1.0
+
+mwarp:
+  sigma: 0.1
+  knots: 4
+  prob: 1.0
