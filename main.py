@@ -183,7 +183,10 @@ class DataModule(pl.LightningDataModule):
         X_test, Y_test, pid_test = X[~whr_deriv], Y[~whr_deriv], pid[~whr_deriv]
 
         # further split deriv into train/val
-        whr_val = np.isin(pid_deriv, np.random.choice(np.unique(pid_deriv), size=data_cfg['val_size']))
+        whr_val = np.isin(pid_deriv,
+                          np.random.choice(np.unique(pid_deriv),
+                                           size=data_cfg['val_size'],
+                                           replace=False))
         X_val, Y_val, pid_val = X_deriv[whr_val], Y_deriv[whr_val], pid_deriv[whr_val]
         X_train, Y_train, pid_train = X_deriv[~whr_val], Y_deriv[~whr_val], pid_deriv[~whr_val]
 
