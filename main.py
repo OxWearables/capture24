@@ -305,6 +305,8 @@ def create_lightning_modules(cfg: DictConfig):
 
 def resolve_cfg_paths(cfg: DictConfig):
     cfg.data.datadir = os.path.expanduser(cfg.data.datadir)
+    if cfg.ckpt_path is not None:
+        cfg.ckpt_path = os.path.expanduser(cfg.ckpt_path)
 
 
 @hydra.main(config_path="conf", config_name="config")
