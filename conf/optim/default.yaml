@@ -1,6 +1,6 @@
 name: default
 
-method: 'adam'
+method: 'sgd'
 
 adam:
   lr: 3e-4
@@ -15,5 +15,5 @@ cosine_annealing:
   eta_min: 0
 
 swa:
-  start: 5
+  start: 999
   lr: .05
