@@ -11,6 +11,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.callbacks import ModelCheckpoint
+from sklearn import metrics
 
 import models
 from augmentation import Augment
@@ -40,10 +41,11 @@ class ModelModule(pl.LightningModule):
             model_cfg["fc_size"])
 
         self.loss_fn = torch.nn.CrossEntropyLoss()
-        self.metrics_fn = utils.Metrics()
 
         self.swa_model = torch.optim.swa_utils.AveragedModel(self.model)
         self.is_swa_started = False
+
+        self.hmm_params = None  # TODO: track best
 
     def configure_optimizers(self):
         optim_cfg = self.optim_cfg
@@ -98,36 +100,58 @@ class ModelModule(pl.LightningModule):
                 self._adjust_learning_rate(self.optim_cfg["swa"]["lr"])
 
     def validation_step(self, batch, batch_idx):
-        self._validation_test_step(batch, batch_idx, stage="valid")
+        return self._validation_test_step(batch, batch_idx, tag="valid")
 
     def validation_epoch_end(self, outputs=None):
-        self._validation_test_epoch_end(outputs, stage="valid")
+        self._train_hmm(outputs)
+        self._validation_test_epoch_end(outputs, tag="valid")
 
     def test_step(self, batch, batch_idx):
-        self._validation_test_step(batch, batch_idx, stage="test")
+        return self._validation_test_step(batch, batch_idx, tag="test")
 
     def test_epoch_end(self, outputs=None):
-        self._validation_test_epoch_end(outputs, stage="test")
+        self._validation_test_epoch_end(outputs, tag="test", print_report=True)
 
-    def _validation_test_step(self, batch, batch_idx, stage=""):
+    def _validation_test_step(self, batch, batch_idx, tag=""):
         x, target = batch
         y = self(x)
         loss = self.loss_fn(y, target)
-        self.log(f"{stage}/loss", loss)
-        self.metrics_fn(y, target)
+        self.log(f"{tag}/loss", loss)
         return y, target
 
-    def _validation_test_epoch_end(self, outputs=None, stage=""):
-        scores = self.metrics_fn.compute()
-        self.metrics_fn.reset()
-        self.log(f"{stage}/f1", scores['f1'], prog_bar=True)
-        self.log(f"{stage}/kappa", scores['kappa'], prog_bar=True)
-        self.log(f"{stage}/phi", scores['phi'], prog_bar=True)
+    def _validation_test_epoch_end(self, outputs=None, tag="", print_report=False):
+        Y_logit, Y_true = self._concat_outputs(outputs)
+        Y_pred = torch.argmax(Y_logit, dim=1)
+        Y_true, Y_pred = Y_true.cpu().numpy(), Y_pred.cpu().numpy()
+        self._metrics_log(Y_true, Y_pred, tag=tag, print_report=print_report)
 
-    def predict_step(self, batch, batch_idx, dataloader_idx=None):
-        x, _ = batch
-        y = self(x)
-        return y
+        if self.hmm_params is not None:
+            # Apply HMM. Note: outputs must be sorted
+            Y_pred_hmm = utils.viterbi(Y_pred, self.hmm_params)
+            self._metrics_log(Y_true, Y_pred_hmm, tag=f"{tag}/hmm", print_report=print_report)
+
+    def _train_hmm(self, outputs):
+        # Note: outputs must be sorted
+        Y_logit, Y_true = self._concat_outputs(outputs)
+        Y_prob = torch.softmax(Y_logit, dim=1)
+        Y_true, Y_prob = Y_true.cpu().numpy(), Y_prob.cpu().numpy()
+        self.hmm_params = utils.train_hmm(Y_prob, Y_true)
+
+    def _metrics_log(self, Y_true, Y_pred, tag="", print_report=False):
+        f1= metrics.f1_score(Y_true, Y_pred, zero_division=0, average='macro')
+        phi = metrics.matthews_corrcoef(Y_true, Y_pred)
+        kappa = metrics.cohen_kappa_score(Y_true, Y_pred)
+        self.log(f"{tag}/f1", f1, prog_bar=True)
+        self.log(f"{tag}/phi", phi, prog_bar=True)
+        self.log(f"{tag}/kappa", kappa, prog_bar=True)
+        if print_report:
+            # Note: Lightning throws a tantrum when n_jobs>0
+            utils.metrics_report(Y_true, Y_pred, n_jobs=0)
+
+    def _concat_outputs(self, outputs):
+        Y_prob = torch.cat([output[0] for output in outputs])
+        Y_true = torch.cat([output[1] for output in outputs])
+        return Y_prob, Y_true
 
     def forward(self, x):
         if self.is_swa_started:
@@ -194,11 +218,6 @@ class DataModule(pl.LightningDataModule):
         self.dataset_valid = Dataset(X_val, Y_val)
         self.dataset_test = Dataset(X_test, Y_test)
 
-    def setup_predict(self, X=None, X_path=None):
-        if X_path is not None:
-            X = np.load(X_path)
-        self.dataset_predict = Dataset(X)
-
     def train_dataloader(self):
         return DataModule.create_dataloader(self.dataset_train,
                                             **self.dataloader_cfg["train"],
@@ -212,11 +231,6 @@ class DataModule(pl.LightningDataModule):
     def test_dataloader(self):
         return DataModule.create_dataloader(self.dataset_test,
                                             **self.dataloader_cfg["test"],
-                                            deterministic=True)
-
-    def predict_dataloader(self):
-        return DataModule.create_dataloader(self.dataset_predict,
-                                            **self.dataloader_cfg["predict"],
                                             deterministic=True)
 
     @staticmethod
@@ -295,10 +309,7 @@ def create_lightning_modules(cfg: DictConfig):
 
     # Model
     if cfg.ckpt_path is not None:
-        model = ModelModule.load_from_checkpoint(
-            cfg.ckpt_path,
-            model_cfg=cfg.model,
-            optim_cfg=cfg.optim)
+        model = ModelModule.load_from_checkpoint(cfg.ckpt_path)
 
     else:
         model = ModelModule(cfg.model, cfg.optim)
@@ -336,13 +347,15 @@ def main(cfg: DictConfig) -> None:
                          limit_train_batches=cfg.limit_train_batches,
                          limit_val_batches=cfg.limit_val_batches,
                          limit_test_batches=cfg.limit_test_batches,
+                         deterministic=True,
                          )
 
     if cfg.fit:
         trainer.fit(model, datamodule)
 
     if cfg.test:
-        trainer.test(datamodule=datamodule)
+        trainer.validate(model, datamodule=datamodule)
+        trainer.test(model, datamodule=datamodule)
 
     return
 

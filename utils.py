@@ -5,8 +5,11 @@ import torch
 import torchmetrics
 
 
-def train_hmm(Y_prob, Y_true, labels, uniform_prior=True):
+def train_hmm(Y_prob, Y_true, labels=None, uniform_prior=True):
     ''' https://en.wikipedia.org/wiki/Hidden_Markov_model '''
+
+    if labels is None:
+        labels = np.unique(Y_true)
 
     if uniform_prior:
         # All labels with equal probability
@@ -74,7 +77,10 @@ def bootstrapCI(f, sample, nboots=100, n_jobs=4):
 
     boots = np.random.choice(sample, size=(nboots, len(sample)))
 
-    mus = Parallel(n_jobs=n_jobs)(delayed(f)(boot) for boot in boots)
+    if n_jobs != 0:
+        mus = Parallel(n_jobs=n_jobs)(delayed(f)(boot) for boot in boots)
+    else:
+        mus = [f(boot) for boot in boots]
     mus = np.stack(mus)
 
     mu_hi, mu_low = mu - np.percentile(mus - mu, (2.50, 97.50), axis=0)
@@ -106,38 +112,3 @@ def metrics_report(Y_true, Y_pred, nboots=100, n_jobs=4):
     print(f"   f1: {f1:.3f} ({f1_low:.3f}, {f1_hi:.3f})")
     print(f"  phi: {phi:.3f} ({phi_low:.3f}, {phi_hi:.3f})")
     print(f"kappa: {kappa:.3f} ({kappa_low:.3f}, {kappa_hi:.3f})")
-
-
-class Metrics(torchmetrics.Metric):
-
-    def __init__(self,
-                 compute_on_step=False,
-                 dist_sync_on_step=False,
-                 process_group=None,
-                 dist_sync_fn=None):
-        super().__init__(compute_on_step=compute_on_step,
-                         dist_sync_on_step=dist_sync_on_step,
-                         process_group=process_group,
-                         dist_sync_fn=dist_sync_fn)
-
-        self.add_state("Y_pred", default=[], dist_reduce_fx="cat")
-        self.add_state("Y_true", default=[], dist_reduce_fx="cat")
-
-    def update(self, y_pred, y_true):
-        self.Y_pred.append(y_pred)
-        self.Y_true.append(y_true)
-
-    def compute(self):
-        Y_pred = torch.cat(self.Y_pred).cpu().numpy()
-        Y_pred = np.argmax(Y_pred, axis=1)
-        Y_true = torch.cat(self.Y_true).cpu().numpy()
-
-        f1 = metrics.f1_score(Y_true, Y_pred, zero_division=0, average='macro')
-        phi = metrics.matthews_corrcoef(Y_true, Y_pred)
-        kappa = metrics.cohen_kappa_score(Y_true, Y_pred)
-
-        return {'f1': f1, 'phi': phi, 'kappa': kappa}
-
-    @property
-    def is_differentiable(self) -> bool:
-        return False
