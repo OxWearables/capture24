@@ -1,7 +1,7 @@
 name: default
 
 shift:
-  window: 100
+  window: 200
   prob: 1.0
 
 jitter:
@@ -9,11 +9,11 @@ jitter:
   prob: 0.0
 
 twarp:
-  sigma: 0.01
-  knots: 2
+  sigma: 0.05
+  knots: 4
   prob: 1.0
 
 mwarp:
-  sigma: 0.01
+  sigma: 0.05
   knots: 2
   prob: 1.0
