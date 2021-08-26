@@ -4,14 +4,14 @@ train:
   num_workers: 22
   seed: 12345
 valid:
-  batch_size: 64
+  batch_size: 512
   num_workers: 22
   seed: 12345
 test:
-  batch_size: 64
+  batch_size: 512
   num_workers: 22
   seed: 12345
 predict:
-  batch_size: 64
+  batch_size: 512
   num_workers: 22
   seed: 12345
