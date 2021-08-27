@@ -100,8 +100,11 @@ class Resnet(nn.Module):
                  downfactor_list,
                  downorder_list,
                  drop1, drop2,
-                 fc_size):
+                 fc_size,
+                 is_cnnlstm=False):
         super(Resnet, self).__init__()
+
+        self.is_cnnlstm = is_cnnlstm
 
         # Broadcast if single number provided instead of list
         if isinstance(kernel_size_list, int):
@@ -134,13 +137,17 @@ class Resnet(nn.Module):
                                                                downfactor, downorder))
             in_channels = out_channels
 
-        # Fully-connected layer
-        resnet.add_module('fc', nn.Sequential(nn.Dropout2d(drop2),
-                                              nn.Conv1d(in_channels, fc_size, 1, 1, 0, bias=False),
-                                              nn.ReLU(True)))
+        if not is_cnnlstm:
+            # Fully-connected layer
+            resnet.add_module('fc', nn.Sequential(nn.Dropout2d(drop2),
+                                                nn.Conv1d(in_channels, fc_size, 1, 1, 0, bias=False),
+                                                nn.ReLU(True)))
+            # Final linear layer
+            resnet.add_module('final', nn.Conv1d(fc_size, outsize, 1, 1, 0, bias=False))
 
-        # Final linear layer
-        resnet.add_module('final', nn.Conv1d(fc_size, outsize, 1, 1, 0, bias=False))
+        else:
+            self.lstm = nn.LSTM(in_channels, int(fc_size // 2), batch_first=True, bidirectional=True)
+            self.final = nn.Linear(fc_size, outsize, bias=False)
 
         self.resnet = resnet
 
@@ -181,4 +188,17 @@ class Resnet(nn.Module):
         return nn.Sequential(*modules)
 
     def forward(self, x):
-        return self.resnet(x).reshape(x.shape[0], -1)
+        if self.is_cnnlstm:
+            bsize, seqlen, _, _ = x.shape
+            x = x.view(-1, x.shape[2], x.shape[3])  # merge batch and sequence axes
+            feats = self.resnet(x).view(bsize, seqlen, -1)
+            lstm_feats, (h_n, c_n) = self.lstm(feats)
+            lstm_feats = lstm_feats.reshape(-1, lstm_feats.shape[2])  # merge batch and sequence axes
+            y = self.final(lstm_feats).view(bsize, seqlen, -1)
+
+        else:
+            y = self.resnet(x).view(x.shape[0], -1)
+
+        return y
+
+

@@ -38,14 +38,18 @@ class ModelModule(pl.LightningModule):
             model_cfg["downorder"],
             model_cfg["drop1"],
             model_cfg["drop2"],
-            model_cfg["fc_size"])
+            model_cfg["fc_size"],
+            model_cfg["is_cnnlstm"])
 
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
         self.swa_model = torch.optim.swa_utils.AveragedModel(self.model)
         self.is_swa_started = False
 
+        self.best_loss = np.inf
+        self.best_hmm_params = None
         self.hmm_params = None  # TODO: track best
+        self.use_hmm = True
 
     def configure_optimizers(self):
         optim_cfg = self.optim_cfg
@@ -81,7 +85,7 @@ class ModelModule(pl.LightningModule):
         optimizer = self.optimizers()
 
         y = self.model(x)
-        loss = self.loss_fn(y, target)
+        loss = self.loss_fn(y.view(-1, y.shape[-1]), target.view(-1))
         optimizer.zero_grad()
         self.manual_backward(loss)
         optimizer.step()
@@ -103,7 +107,8 @@ class ModelModule(pl.LightningModule):
         return self._validation_test_step(batch, batch_idx, tag="valid")
 
     def validation_epoch_end(self, outputs=None):
-        self._train_hmm(outputs)
+        if self.use_hmm:
+            self._train_hmm(outputs)
         self._validation_test_epoch_end(outputs, tag="valid")
 
     def test_step(self, batch, batch_idx):
@@ -115,7 +120,7 @@ class ModelModule(pl.LightningModule):
     def _validation_test_step(self, batch, batch_idx, tag=""):
         x, target = batch
         y = self(x)
-        loss = self.loss_fn(y, target)
+        loss = self.loss_fn(y.view(-1, y.shape[-1]), target.view(-1))
         self.log(f"{tag}/loss", loss)
         return y, target
 
@@ -151,6 +156,8 @@ class ModelModule(pl.LightningModule):
     def _concat_outputs(self, outputs):
         Y_prob = torch.cat([output[0] for output in outputs])
         Y_true = torch.cat([output[1] for output in outputs])
+        Y_prob = Y_prob.view(-1, Y_prob.shape[-1])
+        Y_true = Y_true.view(-1)
         return Y_prob, Y_true
 
     def forward(self, x):
@@ -214,9 +221,9 @@ class DataModule(pl.LightningDataModule):
         X_val, Y_val, pid_val = X_deriv[whr_val], Y_deriv[whr_val], pid_deriv[whr_val]
         X_train, Y_train, pid_train = X_deriv[~whr_val], Y_deriv[~whr_val], pid_deriv[~whr_val]
 
-        self.dataset_train = Dataset(X_train, Y_train, transform=self.transform)
-        self.dataset_valid = Dataset(X_val, Y_val)
-        self.dataset_test = Dataset(X_test, Y_test)
+        self.dataset_train = Dataset(X_train, Y_train, transform=self.transform, seq_length=data_cfg["seq_length"])
+        self.dataset_valid = Dataset(X_val, Y_val, seq_length=data_cfg["seq_length"])
+        self.dataset_test = Dataset(X_test, Y_test, seq_length=data_cfg["seq_length"])
 
     def train_dataloader(self):
         return DataModule.create_dataloader(self.dataset_train,
@@ -269,28 +276,37 @@ class DataModule(pl.LightningDataModule):
 
 class Dataset(torch.utils.data.Dataset):
 
-    def __init__(self, X, Y=None, transform=None):
+    def __init__(self, X, Y=None, transform=None, seq_length=1):
+
+        if seq_length > 1:
+            # this throws out the last irregular chunk
+            # it's hacky but not gonna make a big diff
+            nX = int((len(X) // seq_length) * seq_length)
+            nY = int((len(Y) // seq_length) * seq_length)  # should = nX
+            X = [X[i:i+seq_length] for i in range(0, nX, seq_length)]
+            Y = [Y[i:i+seq_length] for i in range(0, nY, seq_length)]
 
         self.X = X
         self.Y = Y
         self.transform = transform
+        self.seq_length = seq_length
 
     def __len__(self):
         return len(self.X)
 
     def __getitem__(self, index):
         x = self.X[index]
-        if self.transform is not None:
-            x = self.transform(x)
-        x = x.T  # channels first
+        x = self.prepare_x(x)
+
         if self.Y is not None:
             y = self.Y[index]
-            y = Dataset.to_class_idx(y)
+            y = self.prepare_y(y)
             return x, y
+
         return x
 
     @staticmethod
-    def to_class_idx(label):
+    def to_class_idx(y):
         return [
             "sleep",
             "sit-stand",
@@ -298,7 +314,23 @@ class Dataset(torch.utils.data.Dataset):
             "walking",
             "mixed",
             "bicycling"
-        ].index(label)
+        ].index(y)
+
+    def _prepare_x(self, x):
+        if self.transform is not None:
+            x = self.transform(x)
+        x = x.T
+        return x
+
+    def prepare_x(self, x):
+        if self.seq_length > 1:
+            return np.asarray([self._prepare_x(_x) for _x in x])
+        return self.transform(x)
+
+    def prepare_y(self, y):
+        if self.seq_length > 1:
+            return np.asarray([Dataset.to_class_idx(_y) for _y in y])
+        return Dataset.to_class_idx(y)
 
 
 def create_lightning_modules(cfg: DictConfig):

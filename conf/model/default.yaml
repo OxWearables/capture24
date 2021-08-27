@@ -10,3 +10,4 @@ downorder: [0, 0, 0, 1, 1, 1]
 drop1: 0
 drop2: 0.5
 fc_size: 1024
+is_cnnlstm: true
