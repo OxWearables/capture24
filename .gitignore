@@ -1,5 +1,7 @@
 .vscode
 __pycache__
 outputs/*
+data/*
 prepared_data/*
 prepared_data.tar.gz
+.DS_Store
