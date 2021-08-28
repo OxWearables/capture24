@@ -1,6 +1,6 @@
 name: default
 train:
-  batch_size: 512
+  batch_size: 64
   num_workers: 22
   seed: 12345
 valid:
