@@ -88,7 +88,9 @@ def bootstrapCI(f, sample, nboots=100, n_jobs=4):
     return mu_low, mu_hi
 
 
-def metrics_report(Y_true, Y_pred, nboots=100, n_jobs=4):
+def metrics_report(Y_true, Y_pred, tag="", nboots=100, n_jobs=4):
+
+    print(f"\n========================= {tag} =========================")
 
     # Print the cute sklearn report
     print(metrics.classification_report(Y_true, Y_pred, zero_division=0))
@@ -109,6 +111,6 @@ def metrics_report(Y_true, Y_pred, nboots=100, n_jobs=4):
     (f1, phi, kappa) = f(idxs)
     (f1_low, phi_low, kappa_low), (f1_hi, phi_hi, kappa_hi) = bootstrapCI(f, idxs, nboots, n_jobs)
 
-    print(f"   f1: {f1:.3f} ({f1_low:.3f}, {f1_hi:.3f})")
-    print(f"  phi: {phi:.3f} ({phi_low:.3f}, {phi_hi:.3f})")
-    print(f"kappa: {kappa:.3f} ({kappa_low:.3f}, {kappa_hi:.3f})")
+    print(f"  {tag}/f1: {f1:.3f} ({f1_low:.3f}, {f1_hi:.3f})")
+    print(f" {tag}/phi: {phi:.3f} ({phi_low:.3f}, {phi_hi:.3f})")
+    print(f"{tag}/kappa: {kappa:.3f} ({kappa_low:.3f}, {kappa_hi:.3f})")

@@ -46,10 +46,12 @@ class ModelModule(pl.LightningModule):
         self.swa_model = torch.optim.swa_utils.AveragedModel(self.model)
         self.register_buffer("is_swa_started", torch.tensor(False))
 
-        self.best_loss = np.inf
-        self.best_hmm_params = None
-        self.hmm_params = None  # TODO: track best
-        self.use_hmm = True
+        # HMM params
+        n_classes = model_cfg["outsize"]
+        self.register_buffer("hmm_prior", torch.zeros(n_classes))
+        self.register_buffer("hmm_emission", torch.zeros(n_classes, n_classes))
+        self.register_buffer("hmm_transition", torch.zeros(n_classes, n_classes))
+        self.register_buffer("hmm_labels", torch.zeros(n_classes))
 
     def configure_optimizers(self):
         optim_cfg = self.optim_cfg
@@ -109,8 +111,7 @@ class ModelModule(pl.LightningModule):
         return self._validation_test_step(batch, batch_idx, tag="valid")
 
     def validation_epoch_end(self, outputs=None):
-        if self.use_hmm:
-            self._train_hmm(outputs)
+        self._train_hmm(outputs)
         self._validation_test_epoch_end(outputs, tag="valid")
 
     def test_step(self, batch, batch_idx):
@@ -132,17 +133,23 @@ class ModelModule(pl.LightningModule):
         Y_true, Y_pred = Y_true.cpu().numpy(), Y_pred.cpu().numpy()
         self._metrics_log(Y_true, Y_pred, tag=tag, print_report=print_report)
 
-        if self.hmm_params is not None:
-            # Apply HMM. Note: outputs must be sorted
-            Y_pred_hmm = utils.viterbi(Y_pred, self.hmm_params)
-            self._metrics_log(Y_true, Y_pred_hmm, tag=f"{tag}/hmm", print_report=print_report)
+        # Apply HMM. Note: outputs must be sorted
+        Y_pred_hmm = utils.viterbi(Y_pred, {"prior": self.hmm_prior.cpu().numpy(),
+                                            "emission": self.hmm_emission.cpu().numpy(),
+                                            "transition": self.hmm_transition.cpu().numpy(),
+                                            "labels": self.hmm_labels.cpu().numpy()})
+        self._metrics_log(Y_true, Y_pred_hmm, tag=f"{tag}/hmm", print_report=print_report)
 
     def _train_hmm(self, outputs):
         # Note: outputs must be sorted
         Y_logit, Y_true = self._concat_outputs(outputs)
         Y_prob = torch.softmax(Y_logit, dim=1)
         Y_true, Y_prob = Y_true.cpu().numpy(), Y_prob.cpu().numpy()
-        self.hmm_params = utils.train_hmm(Y_prob, Y_true)
+        hmm_params = utils.train_hmm(Y_prob, Y_true)
+        self.hmm_prior = torch.as_tensor(hmm_params["prior"])
+        self.hmm_emission = torch.as_tensor(hmm_params["emission"])
+        self.hmm_transition = torch.as_tensor(hmm_params["transition"])
+        self.hmm_labels = torch.as_tensor(hmm_params["labels"])
 
     def _metrics_log(self, Y_true, Y_pred, tag="", print_report=False):
         f1= metrics.f1_score(Y_true, Y_pred, zero_division=0, average='macro')
@@ -153,7 +160,7 @@ class ModelModule(pl.LightningModule):
         self.log(f"{tag}/kappa", kappa, prog_bar=True)
         if print_report:
             # Note: Lightning throws a tantrum when n_jobs>0
-            utils.metrics_report(Y_true, Y_pred, n_jobs=0)
+            utils.metrics_report(Y_true, Y_pred, tag=tag, n_jobs=0)
 
     def _concat_outputs(self, outputs):
         Y_prob = torch.cat([output[0] for output in outputs])
@@ -388,7 +395,6 @@ def main(cfg: DictConfig) -> None:
         trainer.fit(model, datamodule)
 
     if cfg.test:
-        trainer.validate(model, datamodule=datamodule)
         trainer.test(model, datamodule=datamodule)
 
     return
