@@ -4,12 +4,25 @@
 <img src="wrist_accelerometer.jpg" width="300"/>
 </p>
 
-Check out `tutorial.py` or `tutorial.ipynb` for data exploration on Capture24. 
+Check out `tutorial.py` or `tutorial.ipynb` for data exploration on Capture24.
 
 The Capture-24 dataset can be downloaded [here](https://ora.ox.ac.uk/objects/uuid:92650814-a209-4607-9fb5-921eab761c11)
 
 To run the examples, you will need numpy, pandas, sklearn, [imblearn](https://pypi.org/project/imblearn/) and [tqdm](https://pypi.org/project/tqdm/). Most of these come with [anaconda](https://www.anaconda.com/products/individual).
 
+
+## Dependencies
+
+```bash
+# Pytorch (cpu only)
+conda install pytorch=1.8.1 torchvision cudatoolkit=10.2 -c pytorch
+# Pytorch Lightning
+pip install pytorch-lightning==1.3.8
+# Hydra
+pip install hydra-core==1.1.0
+# Pandas
+conda install pandas=1.2.4
+```
 
 ## References
 
