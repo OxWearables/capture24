@@ -14,7 +14,7 @@ To run the examples, you will need numpy, pandas, sklearn, [imblearn](https://py
 ## Dependencies
 
 ```bash
-# Pytorch (cpu only)
+# Pytorch
 conda install pytorch=1.8.1 torchvision cudatoolkit=10.2 -c pytorch
 # Pytorch Lightning
 pip install pytorch-lightning==1.3.8
