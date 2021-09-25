@@ -44,7 +44,7 @@ class ModelModule(pl.LightningModule):
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
         self.swa_model = torch.optim.swa_utils.AveragedModel(self.model)
-        self.is_swa_started = False
+        self.register_buffer("is_swa_started", torch.tensor(False))
 
         self.best_loss = np.inf
         self.best_hmm_params = None
@@ -97,7 +97,9 @@ class ModelModule(pl.LightningModule):
         self.log('train/loss', loss, on_epoch=True, on_step=False, prog_bar=True)
 
     def training_epoch_end(self, outputs=None) -> None:
-        self.is_swa_started = self.current_epoch + 1 >= self.optim_cfg["swa"]["start"]
+        self.is_swa_started = self.is_swa_started or \
+            torch.tensor(self.current_epoch + 1 >= self.optim_cfg["swa"]["start"])
+
         if self.is_swa_started:
             self._update_swa_model()
             if self.optim_cfg["method"] == 'sgd':
