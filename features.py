@@ -16,9 +16,9 @@ def extract_features(xyz, sample_rate=100):
 
     with np.errstate(divide='ignore', invalid='ignore'):  # ignore div by 0 warnings
         # xy, xy, zx correlation
-        feats['xycorr'] = np.nan_to_num(np.corrcoef(x,y)[0,1])
-        feats['yzcorr'] = np.nan_to_num(np.corrcoef(y,z)[0,1])
-        feats['zxcorr'] = np.nan_to_num(np.corrcoef(z,x)[0,1])
+        feats['xycorr'] = np.nan_to_num(np.corrcoef(x, y)[0, 1])
+        feats['yzcorr'] = np.nan_to_num(np.corrcoef(y, z)[0, 1])
+        feats['zxcorr'] = np.nan_to_num(np.corrcoef(z, x)[0, 1])
 
     v = np.linalg.norm(xyz, axis=1)
 
@@ -26,7 +26,7 @@ def extract_features(xyz, sample_rate=100):
 
     with np.errstate(divide='ignore', invalid='ignore'):  # ignore div by 0 warnings
         # 1s autocorrelation
-        feats['corr1s'] = np.nan_to_num(np.corrcoef(v[:-sample_rate], v[sample_rate:]))[0,1]
+        feats['corr1s'] = np.nan_to_num(np.corrcoef(v[:-sample_rate], v[sample_rate:]))[0, 1]
 
     # Angular features
     feats.update(angular_features(xyz, sample_rate))

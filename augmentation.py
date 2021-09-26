@@ -61,13 +61,13 @@ def time_warp(x, sigma=0.1, knots=4):
 def magnitude_warp(x, sigma=0.1, knots=4):
     """ Note: assumes x in channels last format """
     n = len(x)
-    x_new = x * random_curve(n, sigma, knots, dtype=x.dtype).reshape(n,1)
+    x_new = x * random_curve(n, sigma, knots, dtype=x.dtype).reshape(n, 1)
     return x_new
 
 
 def random_curve(n, sigma=0.1, knots=4, dtype='f4'):
-    x = np.arange(0, n, (n-1)/(knots+1), dtype=dtype)
-    y = np.random.randn(knots+2).astype(dtype) * sigma + 1.0
+    x = np.arange(0, n, (n - 1) / (knots + 1), dtype=dtype)
+    y = np.random.randn(knots + 2).astype(dtype) * sigma + 1.0
     cs = CubicSpline(x, y)
     curve = cs(np.arange(n, dtype=dtype))
     curve = curve.astype(dtype)
@@ -79,4 +79,3 @@ def warped_timesteps(n, sigma=0.1, knots=4, dtype='f4'):
     # Shift and scale so that endpoints are fixed
     t = (t - t[0]) / (t[-1] - t[0]) * (n - 1)
     return t
-

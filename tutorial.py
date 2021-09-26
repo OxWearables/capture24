@@ -96,6 +96,8 @@ Note: This may take a while
 # %%
 
 # Extract windows. Make a function as we will need it again later.
+
+
 def extract_windows(data, winsize='10s'):
     X, Y = [], []
     for t, w in data.resample(winsize, origin='start'):
@@ -118,6 +120,7 @@ def extract_windows(data, winsize='10s'):
 
 # %%
 
+
 print("Extracting windows...")
 X, Y = extract_windows(data)
 
@@ -132,13 +135,13 @@ Let's plot some instances of each activity
 print("Plotting activities...")
 NPLOTS = 5
 unqY = np.unique(Y)
-fig, axs = plt.subplots(len(unqY), NPLOTS, sharex=True, sharey=True, figsize=(10,10))
+fig, axs = plt.subplots(len(unqY), NPLOTS, sharex=True, sharey=True, figsize=(10, 10))
 for y, row in zip(unqY, axs):
-    idxs = np.random.choice(np.where(Y==y)[0], size=NPLOTS)
+    idxs = np.random.choice(np.where(Y == y)[0], size=NPLOTS)
     row[0].set_ylabel(y)
     for x, ax in zip(X[idxs], row):
         ax.plot(x)
-        ax.set_ylim(-5,5)
+        ax.set_ylim(-5, 5)
 fig.tight_layout()
 fig.show()
 
@@ -158,7 +161,7 @@ Now let's perform a PCA plot
 # PCA plot
 print("Plotting first two PCA components...")
 scaler = preprocessing.StandardScaler()  # PCA requires normalized data
-X_scaled = scaler.fit_transform(X.reshape(X.shape[0],-1))
+X_scaled = scaler.fit_transform(X.reshape(X.shape[0], -1))
 pca = decomposition.PCA(n_components=2)  # two components
 X_pca = pca.fit_transform(X_scaled)
 
@@ -166,9 +169,9 @@ NPOINTS = 200
 unqY = np.unique(Y)
 fig, ax = plt.subplots()
 for y in unqY:
-    idxs = np.random.choice(np.where(Y==y)[0], size=NPOINTS)
+    idxs = np.random.choice(np.where(Y == y)[0], size=NPOINTS)
     x = X_pca[idxs]
-    ax.scatter(x[:,0], x[:,1], label=y, s=10)
+    ax.scatter(x[:, 0], x[:, 1], label=y, s=10)
 fig.legend()
 fig.show()
 

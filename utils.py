@@ -1,8 +1,6 @@
 import numpy as np
 from sklearn import metrics
 from joblib import Parallel, delayed
-import torch
-import torchmetrics
 
 
 def train_hmm(Y_prob, Y_true, labels=None, uniform_prior=True):
@@ -16,17 +14,17 @@ def train_hmm(Y_prob, Y_true, labels=None, uniform_prior=True):
         prior = np.ones(len(labels)) / len(labels)
     else:
         # Label probability equals empirical rate
-        prior = np.mean(Y_true.reshape(-1,1)==labels, axis=0)
+        prior = np.mean(Y_true.reshape(-1, 1) == labels, axis=0)
 
     emission = np.vstack(
-        [np.mean(Y_prob[Y_true==label], axis=0) for label in labels]
+        [np.mean(Y_prob[Y_true == label], axis=0) for label in labels]
     )
     transition = np.vstack(
-        [np.mean(Y_true[1:][(Y_true==label)[:-1]].reshape(-1,1)==labels, axis=0)
+        [np.mean(Y_true[1:][(Y_true == label)[:-1]].reshape(-1, 1) == labels, axis=0)
             for label in labels]
     )
 
-    params = {'prior':prior, 'emission':emission, 'transition':transition, 'labels':labels}
+    params = {'prior': prior, 'emission': emission, 'transition': transition, 'labels': labels}
 
     return params
 
@@ -46,22 +44,22 @@ def viterbi(Y_obs, hmm_params):
     nobs = len(Y_obs)
     nlabels = len(labels)
 
-    Y_obs = np.where(Y_obs.reshape(-1,1)==labels)[1]  # to numeric
+    Y_obs = np.where(Y_obs.reshape(-1, 1) == labels)[1]  # to numeric
 
     probs = np.zeros((nobs, nlabels))
-    probs[0,:] = log(prior) + log(emission[:, Y_obs[0]])
+    probs[0, :] = log(prior) + log(emission[:, Y_obs[0]])
     for j in range(1, nobs):
         for i in range(nlabels):
-            probs[j,i] = np.max(
-                log(emission[i, Y_obs[j]]) + \
-                log(transition[:, i]) + \
-                probs[j-1,:])  # probs already in log scale
+            probs[j, i] = np.max(
+                log(emission[i, Y_obs[j]]) +
+                log(transition[:, i]) +
+                probs[j - 1, :])  # probs already in log scale
     viterbi_path = np.zeros_like(Y_obs)
-    viterbi_path[-1] = np.argmax(probs[-1,:])
-    for j in reversed(range(nobs-1)):
+    viterbi_path[-1] = np.argmax(probs[-1, :])
+    for j in reversed(range(nobs - 1)):
         viterbi_path[j] = np.argmax(
-            log(transition[:, viterbi_path[j+1]]) + \
-            probs[j,:])  # probs already in log scale
+            log(transition[:, viterbi_path[j + 1]]) +
+            probs[j, :])  # probs already in log scale
 
     viterbi_path = labels[viterbi_path]  # to labels
 

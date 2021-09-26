@@ -45,9 +45,9 @@ def main(args):
     time = featframe['time'].to_numpy()
     pid = featframe['pid'].to_numpy()
     anno = featframe['annotation'].to_numpy()
-    Y_willetts= featframe['label:Willetts2018'].to_numpy().astype('str')
-    Y_doherty= featframe['label:Doherty2018'].to_numpy().astype('str')
-    Y_walmsley= featframe['label:Walmsley2020'].to_numpy().astype('str')
+    Y_willetts = featframe['label:Willetts2018'].to_numpy().astype('str')
+    Y_doherty = featframe['label:Doherty2018'].to_numpy().astype('str')
+    Y_walmsley = featframe['label:Walmsley2020'].to_numpy().astype('str')
 
     np.save(os.path.join(args.outdir, 'X'), X)
     np.save(os.path.join(args.outdir, 'time'), time)

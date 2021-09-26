@@ -152,7 +152,7 @@ class ModelModule(pl.LightningModule):
         self.hmm_labels = torch.as_tensor(hmm_params["labels"])
 
     def _metrics_log(self, Y_true, Y_pred, tag="", print_report=False):
-        f1= metrics.f1_score(Y_true, Y_pred, zero_division=0, average='macro')
+        f1 = metrics.f1_score(Y_true, Y_pred, zero_division=0, average='macro')
         phi = metrics.matthews_corrcoef(Y_true, Y_pred)
         kappa = metrics.cohen_kappa_score(Y_true, Y_pred)
         self.log(f"{tag}/f1", f1, prog_bar=True)
@@ -218,7 +218,7 @@ class DataModule(pl.LightningDataModule):
         pid = np.load(os.path.join(data_cfg['datadir'], 'pid.npy'))
 
         # deriv/test split: P001-P100 for derivation, the rest for testing
-        whr_deriv = np.isin(pid, [f"P{i:03d}" for i in range(1,101)])
+        whr_deriv = np.isin(pid, [f"P{i:03d}" for i in range(1, 101)])
         X_deriv, Y_deriv, pid_deriv = X[whr_deriv], Y[whr_deriv], pid[whr_deriv]
         X_test, Y_test, pid_test = X[~whr_deriv], Y[~whr_deriv], pid[~whr_deriv]
 
@@ -292,8 +292,8 @@ class Dataset(torch.utils.data.Dataset):
             # it's hacky but not gonna make a big diff
             nX = int((len(X) // seq_length) * seq_length)
             nY = int((len(Y) // seq_length) * seq_length)  # should = nX
-            X = [X[i:i+seq_length] for i in range(0, nX, seq_length)]
-            Y = [Y[i:i+seq_length] for i in range(0, nY, seq_length)]
+            X = [X[i:i + seq_length] for i in range(0, nX, seq_length)]
+            Y = [Y[i:i + seq_length] for i in range(0, nY, seq_length)]
 
         self.X = X
         self.Y = Y

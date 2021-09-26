@@ -140,8 +140,8 @@ class Resnet(nn.Module):
         if not is_cnnlstm:
             # Fully-connected layer
             resnet.add_module('fc', nn.Sequential(nn.Dropout2d(drop2),
-                                                nn.Conv1d(in_channels, fc_size, 1, 1, 0, bias=False),
-                                                nn.ReLU(True)))
+                                                  nn.Conv1d(in_channels, fc_size, 1, 1, 0, bias=False),
+                                                  nn.ReLU(True)))
             # Final linear layer
             resnet.add_module('final', nn.Conv1d(fc_size, outsize, 1, 1, 0, bias=False))
 
@@ -200,5 +200,3 @@ class Resnet(nn.Module):
             y = self.resnet(x).view(x.shape[0], -1)
 
         return y
-
-
