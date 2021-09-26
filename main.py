@@ -334,7 +334,7 @@ class Dataset(torch.utils.data.Dataset):
     def prepare_x(self, x):
         if self.seq_length > 1:
             return np.asarray([self._prepare_x(_x) for _x in x])
-        return self.transform(x)
+        return self._prepare_x(x)
 
     def prepare_y(self, y):
         if self.seq_length > 1:
