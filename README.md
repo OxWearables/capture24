@@ -1,28 +1,48 @@
-# Activity recognition with the Capture24 dataset
+# Capture24 Dataset and Baselines
+
+This repository contains code for [Capture24: Activity recognition on a large activity tracker data collected in the wild](https://openreview.net/forum?id=RUzBgTQSSvq). Source code for training and evaluating models for activity recognition under different labelling schemes are available here. 
 
 <p align="center">
 <img src="wrist_accelerometer.jpg" width="300"/>
 </p>
 
-Check out `tutorial.py` or `tutorial.ipynb` for data exploration on Capture24.
-
-The Capture-24 dataset can be downloaded [here](https://ora.ox.ac.uk/objects/uuid:92650814-a209-4607-9fb5-921eab761c11)
-
-To run the examples, you will need numpy, pandas, sklearn, [imblearn](https://pypi.org/project/imblearn/) and [tqdm](https://pypi.org/project/tqdm/). Most of these come with [anaconda](https://www.anaconda.com/products/individual).
 
 
-## Dependencies
+## Data
+The raw data of Capture-24 can be downloaded [here](https://ora.ox.ac.uk/objects/uuid:92650814-a209-4607-9fb5-921eab761c11). We have prepared `tutorial.ipynb` and `tutorial.py` for data exploration on the raw dataset. 
 
-```bash
-# Pytorch
-conda install pytorch=1.8.1 torchvision cudatoolkit=10.2 -c pytorch
-# Pytorch Lightning
-pip install pytorch-lightning==1.3.8
-# Hydra
-pip install hydra-core==1.1.0
-# Pandas
-conda install pandas=1.2.4
+## Raw data
+There are a total of 153 files: 
+
+- `annotation-label-dictionary.csv`: A table containing the correspondence of fine-grained to coarse activity label under 6 different annotation schemes. 
+- `metadata.csv`: A table containing the age group and gender of each user. 
+- 151 `P{USER_ID}.csv.gz` files: Each file contains data from one user. The columns are ['time', 'x', 'y', 'z', 'annotation'], which refers to the timestamp of each record, the triaxial acceleration values measured in `g`, and the fine-grained annotation string (which can be mapped to coarse-grained class labels using the `annotation-label-dictionary.csv`)
+
+### Processing the raw data
+After the raw data is downloaded and saved in `RAW_DATA_PATH`, run the following script for segmenting the data into sliding windows to prepare the processed dataset for running machine learning models. The default parameters are for creating window of 10-second sizes. 
+```python prepare_data.py --datadir {RAW_DATA_PATH}```
+
+## Training and evaluation 
+
+### Deep Learning models
+We use `hydra` to configure all hyperparameters for running the experiments, the configuration files are located in `config/`.
+
+Use the following to run CNN models with selected hyperparameters (this will train and evaluate both CNN and CNN+HMM):
 ```
+python main.py model.is_cnnlstm=false
+```
+
+Use the following to run RNN models with selected hyperparameters (this will train and evaluate both RNN and RNN+HMM):
+```
+python main.py
+```
+
+### Random Forests models 
+Use the following to run RF models with selected hyperparameters (this will train and evaluate both RF and RF+HMM):
+```
+python rf.py
+```
+
 
 ## References
 
