@@ -34,7 +34,7 @@ np.random.seed(42)
 # %%
 
 print('Content of data/')
-print(os.listdir('data/'))
+print(sorted(os.listdir('data/')))
 
 # Let's load one file
 data = pd.read_csv('data/P001.csv.gz',
@@ -201,7 +201,7 @@ Note: this may take a while
 
 # %%
 clf = BalancedRandomForestClassifier(
-    n_estimators=1000,
+    n_estimators=100,
     replacement=True,
     sampling_strategy='not minority',
     n_jobs=4,
