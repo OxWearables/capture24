@@ -6,7 +6,7 @@
 
 Check out `tutorial.py` or `tutorial.ipynb`
 
-The Capture-24 dataset can be downloaded [here](https://ora.ox.ac.uk/objects/uuid:92650814-a209-4607-9fb5-921eab761c11)
+The Capture-24 dataset can be downloaded [here](https://ora.ox.ac.uk/objects/uuid:99d7c092-d865-4a19-b096-cc16440cd001)
 
 To run the examples, you will need numpy, pandas, sklearn, [imblearn](https://pypi.org/project/imblearn/) and [tqdm](https://pypi.org/project/tqdm/). Most of these come with [anaconda](https://www.anaconda.com/products/individual).
 
