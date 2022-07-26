@@ -78,10 +78,11 @@ def make_windows(datafile, winsec=10, sample_rate=SAMPLE_RATE, dropna=True):
         xyz = w[['x', 'y', 'z']].to_numpy()
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="Unable to sort modes")
-            if len(w['annotation'].mode(dropna=False)) == 0:
-                anno = pd.NA
+            anno = w['annotation'].mode(dropna=False)
+            if len(anno) > 0:
+                anno = anno.iloc[0]
             else:
-                anno = w['annotation'].mode(dropna=False).iloc[0]
+                anno = pd.NA
 
         if dropna and pd.isna(anno):  # skip if annotation is NA
             continue
