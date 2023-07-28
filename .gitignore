@@ -2,6 +2,7 @@
 __pycache__
 outputs/*
 data/*
+optimised_params/*
 prepared_data/*
 prepared_data.tar.gz
 .DS_Store

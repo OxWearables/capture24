@@ -13,9 +13,9 @@ from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.callbacks import ModelCheckpoint
 from sklearn import metrics
 
-import models
-from augmentation import Augment
-import utils
+import old_code.models as models
+from old_code.augmentation import Augment
+import old_code.utils as utils
 
 
 class ModelModule(pl.LightningModule):

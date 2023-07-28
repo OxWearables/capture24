@@ -1,125 +1,167 @@
-import os
-import re
-import warnings
 import argparse
 from glob import glob
-import numpy as np
-import pandas as pd
-from tqdm.auto import tqdm
 from joblib import Parallel, delayed
+import numpy as np
+import os
+import pandas as pd
+from pathlib import Path
+from tqdm.auto import tqdm
+import urllib.request as urllib
+import zipfile
+import warnings
 
-import features
+from features import extract_features
+from utils import check_files_exist
 
-DATAFILES = 'P[0-9][0-9][0-9].csv.gz'
-ANNOFILE = 'annotation-label-dictionary.csv'
+DATAFILES = 'capture24/P[0-9][0-9][0-9].csv.gz'
+ANNOFILE = 'capture24/annotation-label-dictionary.csv'
 SAMPLE_RATE = 100
 
 
-def main(args):
+def download_capture24(datadir, overwrite=False):
+    """ Download and extract the capture-24 dataset """
+    if overwrite or not os.path.exists(os.path.join(datadir, 'capture24.zip')):
+        url = "https://ora.ox.ac.uk/objects/uuid:99d7c092-d865-4a19-b096-cc16440cd001" + \
+              "/download_file?file_format=&safe_filename=capture24.zip&type_of_work=Dataset"
 
-    os.system(f'mkdir -p {args.outdir}')
+        with tqdm(total=6.9e9, unit="B", unit_scale=True, unit_divisor=1024, 
+                  miniters=1, ascii=True, desc="Downloading capture24.zip") as pbar:
+            urllib.urlretrieve(url, filename=os.path.join(datadir, "capture24.zip"),
+                               reporthook=lambda b, bsize, tsize: pbar.update(bsize))
 
-    # Extract windows
-    windows = Parallel(n_jobs=args.n_jobs)(
-        delayed(make_windows)(datafile, winsec=args.winsec)
-        for datafile in tqdm(glob(os.path.join(args.datadir, DATAFILES)))
+    capture24dir = os.path.join(datadir, 'capture24')
+
+    if overwrite or len(glob(os.path.join(datadir, DATAFILES))) < 151:
+        with zipfile.ZipFile(os.path.join(datadir, "capture24.zip"), "r") as f:
+            os.makedirs(capture24dir, exist_ok=True)
+            for member in tqdm(f.namelist(), desc="Unzipping"):
+                try:
+                    f.extract(member, datadir)
+                except zipfile.error:
+                    pass
+    else:
+        print(f"Using saved capture-24 data at \"{capture24dir}\".")
+
+
+def load_data(datafile):
+    """ Load the data files with correct dtypes """
+    data = pd.read_csv(
+        datafile,
+        index_col='time', parse_dates=['time'],
+        dtype={'x': 'f4', 'y': 'f4', 'z': 'f4', 'annotation': 'string'}
     )
-
-    X = np.concatenate([_X for _X, _ in windows])
-    featframe = pd.concat([_featframe for _, _featframe in windows])
-    del windows
-
-    # Now add the labels
-    anno_label_dict = pd.read_csv(os.path.join(args.datadir, ANNOFILE),
-                                  index_col='annotation', dtype='string')
-
-    featframe = pd.concat(
-        [featframe.reset_index(drop=True),
-         anno_label_dict.reindex(featframe['annotation']).reset_index(drop=True)],
-        axis=1
-    )
-
-    featframe.to_pickle(os.path.join(args.outdir, 'featframe.pkl'))
-
-    # Save these separately as numpy arrays
-    time = featframe['time'].to_numpy()
-    pid = featframe['pid'].to_numpy()
-    anno = featframe['annotation'].to_numpy()
-    Y_willetts = featframe['label:Willetts2018'].to_numpy().astype('str')
-    Y_doherty = featframe['label:Doherty2018'].to_numpy().astype('str')
-    Y_walmsley = featframe['label:Walmsley2020'].to_numpy().astype('str')
-
-    np.save(os.path.join(args.outdir, 'X'), X)
-    np.save(os.path.join(args.outdir, 'time'), time)
-    np.save(os.path.join(args.outdir, 'pid'), pid)
-    np.save(os.path.join(args.outdir, 'annotation'), anno)
-    np.save(os.path.join(args.outdir, 'Y_willetts'), Y_willetts)
-    np.save(os.path.join(args.outdir, 'Y_doherty'), Y_doherty)
-    np.save(os.path.join(args.outdir, 'Y_walmsley'), Y_walmsley)
-
-    # List of feature names
-    np.savetxt(os.path.join(args.outdir, 'features.txt'), features.get_feature_names(), fmt='%s')
+    return data
 
 
-def make_windows(datafile, winsec=10, sample_rate=SAMPLE_RATE, dropna=True):
+def make_windows(data, anno_df, anno_cols, winsec=30, sample_rate=SAMPLE_RATE, dropna=True, verbose=False):
+    """ Segment accelerometer data into winsec*sample_rate length windows """
+    X, y_anno, y_cols, T = [], [], {col: [] for col in anno_cols}, []
 
-    pattern = re.compile(r'(P\d{3})')  # 'P123'
-    pid = pattern.search(os.path.basename(datafile)).group(1).upper()
+    for t, w in tqdm(data.resample(f"{winsec}s", origin='start'), disable=not verbose):
+        if len(w) < 1:
+            continue
 
-    data = pd.read_csv(datafile,
-                       index_col='time', parse_dates=['time'],
-                       dtype={'x': 'f4', 'y': 'f4', 'z': 'f4', 'annotation': 'string'})
+        t = t.to_numpy()
+        x = w[['x', 'y', 'z']].to_numpy()
+        annot = w['annotation']
 
-    featframe = []
-    X = []
+        if dropna and pd.isna(annot).all():  # skip if annotation is NA
+            continue
 
-    for t, w in data.resample(f"{winsec}s", origin='start'):
+        if not is_good_window(x, sample_rate, winsec):  # skip if bad window
+            continue
 
-        xyz = w[['x', 'y', 'z']].to_numpy()
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="Unable to sort modes")
-            anno = w['annotation'].mode(dropna=False).iloc[0]
+            y_anno_value = annot.mode(dropna=False).iloc[0]
+            y_anno.append(y_anno_value)
 
-        if dropna and pd.isna(anno):  # skip if annotation is NA
-            continue
+            for col in anno_cols:
+                y_col_value = anno_df.loc[annot.dropna(), f'label:{col}'].mode(dropna=False).iloc[0]
+                y_cols[col].append(y_col_value)
 
-        if not is_good_window(xyz, sample_rate, winsec):  # skip if bad window
-            continue
-
-        X.append(xyz)
-        featframe.append({
-            'time': t,
-            **features.extract_features(xyz, sample_rate),
-            'annotation': anno,
-            'pid': pid})
+        X.append(x)
+        T.append(t)
 
     X = np.stack(X)
-    featframe = pd.DataFrame(featframe)
+    T = np.stack(T)
 
-    return X, featframe
+    return X, y_anno, y_cols, T
 
 
-def is_good_window(xyz, sample_rate, winsec):
+def is_good_window(x, sample_rate, winsec):
     ''' Check there are no NaNs and len is good '''
 
     # Check window length is correct
     window_len = sample_rate * winsec
-    if len(xyz) != window_len:
+    if len(x) != window_len:
         return False
 
     # Check no nans
-    if np.isnan(xyz).any():
+    if np.isnan(x).any():
         return False
 
     return True
 
 
+def load_all_and_make_windows(datadir, anno_cols, outdir, n_jobs, overwrite=False, **kwargs):
+    """ Make windows from all available data, extract features and store locally """
+    if not overwrite and check_files_exist(outdir, ['X.npy', 'Y_anno.npy', 'T.npy', 'P.npy'] + [f'Y_{col}.npy' for col in anno_cols]):
+        print(f"Using files saved at \"{outdir}\".")
+        return
+
+    def worker(datafile):
+        X, y_anno, y_cols, T = make_windows(load_data(datafile), anno_df, anno_cols, **kwargs)
+
+        pid = Path(datafile)
+
+        for _ in pid.suffixes:
+            pid = Path(pid.stem)
+
+        pid = str(pid)
+
+        P = np.array([pid] * len(X))
+
+        return X, y_anno, y_cols, T, P
+
+    datafiles = glob(os.path.join(datadir, DATAFILES))
+    anno_df = pd.read_csv(os.path.join(datadir, ANNOFILE), index_col="annotation", dtype=str)
+
+    X, y_anno, y_cols, T, P = zip(*Parallel(n_jobs=n_jobs)(
+        delayed(worker)(datafile) 
+        for datafile in tqdm(datafiles, desc="Load all and make windows")))
+
+    X = np.vstack(X)
+    T = np.hstack(T)
+    P = np.hstack(P)
+
+    Y_anno = np.hstack(y_anno)
+
+    Y_cols_df = pd.DataFrame(y_cols)
+    Y_cols = {col: np.hstack(Y_cols_df[col]) for col in Y_cols_df}
+
+    X_feats = pd.DataFrame(Parallel(n_jobs=n_jobs)(delayed(extract_features)(x) for x in tqdm(X, desc="Extracting features")))
+
+    os.makedirs(outdir, exist_ok=True)
+    np.save(os.path.join(outdir, 'X.npy'), X)
+    np.save(os.path.join(outdir, 'Y_anno.npy'), Y_anno)
+    for col, vals in Y_cols.items():
+        np.save(os.path.join(outdir, f'Y_{col}.npy'), vals)
+    np.save(os.path.join(outdir, 'T.npy'), T)
+    np.save(os.path.join(outdir, 'P.npy'), P)
+    X_feats.to_pickle(os.path.join(outdir, 'X_feats.pkl'))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--datadir', default='data/')
+    parser.add_argument('--datadir', '-d', default='data')
     parser.add_argument('--outdir', '-o', default='prepared_data')
+    parser.add_argument('--annots', '-a', default='Walmsley2020,WillettsSpecific2018')
     parser.add_argument('--winsec', type=int, default=10)
-    parser.add_argument('--n_jobs', type=int, default=4)
+    parser.add_argument('--n_jobs', type=int, default=8)
+    parser.add_argument('--overwrite', action='store_true')
     args = parser.parse_args()
 
-    main(args)
+    download_capture24(args.datadir, args.overwrite)
+    load_all_and_make_windows(args.datadir, args.annots.split(","), args.outdir, args.n_jobs, 
+                              args.overwrite, winsec=args.winsec)
