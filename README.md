@@ -11,6 +11,17 @@ The Capture-24 dataset can be downloaded [here](https://ora.ox.ac.uk/objects/uui
 To run the examples, you will need numpy, pandas, sklearn, [imblearn](https://pypi.org/project/imblearn/) and [tqdm](https://pypi.org/project/tqdm/). Most of these come with [anaconda](https://www.anaconda.com/products/individual).
 
 ## References
+Dataset description and benchmark paper: 
+```tex
+@misc{chan2024capture24,
+      title={CAPTURE-24: A large dataset of wrist-worn activity tracker data collected in the wild for human activity recognition}, 
+      author={Shing Chan and Hang Yuan and Catherine Tong and Aidan Acquah and Abram Schonfeldt and Jonathan Gershuny and Aiden Doherty},
+      year={2024},
+      eprint={2402.19229},
+      archivePrefix={arXiv},
+      primaryClass={cs.HC}
+}
+```
 
 Papers featuring the Capture-24 dataset:
 
