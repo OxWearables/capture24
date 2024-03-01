@@ -156,6 +156,17 @@ $ python benchmark.py -a WillettsSpecific2018,Walmsley2020 -m rf,xgb,rf_hmm,xgb_
 When parsed as an argument in the `benchmark.py` script, all annotations and models should be separated with a comma (',').
 
 ## References
+Dataset description and benchmark paper: 
+```tex
+@misc{chan2024capture24,
+      title={CAPTURE-24: A large dataset of wrist-worn activity tracker data collected in the wild for human activity recognition}, 
+      author={Shing Chan and Hang Yuan and Catherine Tong and Aidan Acquah and Abram Schonfeldt and Jonathan Gershuny and Aiden Doherty},
+      year={2024},
+      eprint={2402.19229},
+      archivePrefix={arXiv},
+      primaryClass={cs.HC}
+}
+```
 
 Additional information about the dataset can be found [here](https://github.com/activityMonitoring/capture24_neurips/tree/master/data_info).
 
