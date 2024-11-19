@@ -1,11 +1,11 @@
-# Capture-24 Benchamrk
+# CAPTURE-24 Benchamrk
 
-The purpose of the Capture-24 dataset is to serve as a training dataset for developing Human Activity Recognition (HAR) classifiers. 
+The purpose of the CAPTURE-24 dataset is to serve as a training dataset for developing Human Activity Recognition (HAR) classifiers. 
 These classifiers enable the identification of activities performed by individuals wearing smartwatch accelerometers during unmonitored free-living, such as in the UK Biobank physical activity monitoring study. 
 Our goal is to ensure the use of the best possible model for accurate activity identification, with generalizable performance across different individuals and behaviors.
 For more information on this dataset, you can go to the [webpage](https://ora.ox.ac.uk/objects/uuid:99d7c092-d865-4a19-b096-cc16440cd001) or [github repo](https://github.com/OxWearables/capture24).
 
-The purpose of this repository is report a benchmark for trained HAR models on the Capture-24 dataset. 
+The purpose of this repository is report a benchmark for trained HAR models on the CAPTURE-24 dataset. 
 This can be done by either running through the [Benchmark.ipynb](Benchmark.ipynb) notebook, or by running through the set of command line scripts listed in the [Implementation](#implementation) section below. 
 
 ## Methods
@@ -20,7 +20,7 @@ The numbered stages of this analysis present various possibilities and considera
 ### Stage 1: Participant accelerometery
 <img src="wrist_accelerometer.jpg" width="300">
 
-The Capture-24 dataset contains wrist-worn accelerometer data collected from 151 participants. To obtain ground truth annotations, the participants also wore a body camera during daytime, and used sleep diaries to register their sleep times. 
+The CAPTURE-24 dataset contains wrist-worn accelerometer data collected from 151 participants. To obtain ground truth annotations, the participants also wore a body camera during daytime, and used sleep diaries to register their sleep times. 
 Each participant was recorded for roughly 24 hours. The accelerometer was an Axivity AX3 wrist watch (image above) that mearures acceleration in all three axes (x, y, z) at a sampling rate of 100Hz. 
 The body camera was a Vicon Autographer with a sampling rate of 1 picture every 20 seconds. 
 Note that the camera images are not part of the data release — only the raw acceleration trace with text annotations are provided.
@@ -112,7 +112,7 @@ $ conda activate benchmark
 
 ### Data preparation
 
-The Capture-24 data must first be prepared.
+The CAPTURE-24 data must first be prepared.
 This means it must be downloaded, extracted, and divided into 10s windows.
 To do so, run:
 
@@ -157,7 +157,7 @@ When parsed as an argument in the `benchmark.py` script, all annotations and mod
 
 ## References
 Dataset description and benchmark paper: 
-```tex
+<!-- ```tex
 @misc{chan2024capture24,
       title={CAPTURE-24: A large dataset of wrist-worn activity tracker data collected in the wild for human activity recognition}, 
       author={Shing Chan and Hang Yuan and Catherine Tong and Aidan Acquah and Abram Schonfeldt and Jonathan Gershuny and Aiden Doherty},
@@ -166,7 +166,8 @@ Dataset description and benchmark paper:
       archivePrefix={arXiv},
       primaryClass={cs.HC}
 }
-```
+``` -->
+Chan, S., Hang, Y., Tong, C. et al. CAPTURE-24: A large dataset of wrist-worn activity tracker data collected in the wild for human activity recognition. Sci Data 11, 1135 (2024). https://doi.org/10.1038/s41597-024-03960-3
 
 Additional information about the dataset can be found [here](https://github.com/activityMonitoring/capture24_neurips/tree/master/data_info).
 
